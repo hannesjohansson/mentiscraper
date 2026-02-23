@@ -65,6 +65,16 @@
         padding: 0 10px;
       }
 
+      select {
+        padding-right: 34px;
+        appearance: none;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%239da7b3' stroke-width='1.7' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 12px center;
+      }
+
       input,
       select {
         margin-bottom: 8px;
@@ -105,6 +115,13 @@
         background: #212830;
       }
 
+      .btn-success {
+        background: #238636;
+        border-color: #238636;
+        color: #ffffff;
+        box-shadow: 0 0 0 1px rgba(35, 134, 54, 0.25), 0 0 16px rgba(35, 134, 54, 0.25);
+      }
+
       .controls {
         display: grid;
         grid-template-columns: 1fr 1fr 1fr;
@@ -133,6 +150,18 @@
         display: none;
       }
 
+      .advanced summary::after {
+        content: "▾";
+        color: #9da7b3;
+        font-size: 12px;
+        margin-left: 10px;
+        transition: transform 150ms ease;
+      }
+
+      .advanced[open] summary::after {
+        transform: rotate(180deg);
+      }
+
       .advanced-summary-title {
         font-weight: 600;
         color: #c9d1d9;
@@ -152,7 +181,11 @@
       .hint {
         font-size: 11px;
         color: #8b949e;
-        margin-top: 3px;
+        margin: 3px 10px 10px;
+        padding: 6px 8px;
+        border: 1px solid #2d333b;
+        border-radius: 6px;
+        background: #0d1117;
       }
 
       .status-row {
@@ -184,6 +217,12 @@
         color: #9da7b3;
       }
 
+      .badge.completed {
+        color: #56d364;
+        border-color: #56d364;
+        background: rgba(86, 211, 100, 0.12);
+      }
+
       .progress-wrap {
         width: 100%;
         height: 8px;
@@ -198,6 +237,22 @@
         width: 0%;
         background: linear-gradient(90deg, #2f81f7, #56d364);
         transition: width 200ms ease;
+      }
+
+      #statusCard.completed {
+        border-color: #2f6b3f;
+        background: linear-gradient(180deg, #132219 0%, #151b23 100%);
+      }
+
+      .success-banner {
+        margin-top: 8px;
+        padding: 8px 10px;
+        border: 1px solid #2f6b3f;
+        border-radius: 8px;
+        background: rgba(86, 211, 100, 0.12);
+        color: #9be9a8;
+        font-size: 12px;
+        line-height: 1.4;
       }
 
       .metrics {
@@ -300,6 +355,7 @@
           <div class="metric"><div class="metric-k">Rate</div><div id="mRate" class="metric-v">0.00/m</div></div>
           <div class="metric"><div class="metric-k">ETA</div><div id="mEta" class="metric-v">n/a</div></div>
         </div>
+        <div id="successBanner" class="success-banner hidden"></div>
       </section>
 
       <section id="logCard" class="card hidden">

@@ -2,7 +2,7 @@ const state = {
   queue: [],
   results: [],
   running: 0,
-  concurrency: 2,
+  concurrency: 3,
   done: 0,
   total: 0,
   success: 0,
@@ -11,8 +11,8 @@ const state = {
   startedAt: 0,
   nextAllowedAt: 0,
   throttle: {
-    minDelayMs: 900,
-    maxDelayMs: 2200
+    minDelayMs: 300,
+    maxDelayMs: 1900
   }
 };
 

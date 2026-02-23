@@ -24,6 +24,7 @@ const mFailedEl = document.getElementById("mFailed");
 const mQueuedEl = document.getElementById("mQueued");
 const mRateEl = document.getElementById("mRate");
 const mEtaEl = document.getElementById("mEta");
+const successBannerEl = document.getElementById("successBanner");
 
 let rows = [];
 let pollTimer = null;
@@ -45,6 +46,7 @@ function setModeBadge(mode) {
   modeBadgeEl.className = "badge";
   if (mode === "Running") modeBadgeEl.classList.add("running");
   else if (mode === "Paused") modeBadgeEl.classList.add("paused");
+  else if (mode === "Completed") modeBadgeEl.classList.add("completed");
   else modeBadgeEl.classList.add("idle");
   modeBadgeEl.textContent = mode;
   statusTitleEl.textContent = mode;
@@ -53,6 +55,11 @@ function setModeBadge(mode) {
 function renderIdleState() {
   setModeBadge("Idle");
   progressFillEl.style.width = "0%";
+  statusCardEl.classList.remove("completed");
+  successBannerEl.classList.add("hidden");
+  successBannerEl.textContent = "";
+  downloadBtn.classList.remove("btn-success");
+  downloadBtn.classList.add("btn-secondary");
   mDoneEl.textContent = "0/0";
   mSuccessEl.textContent = "0";
   mFailedEl.textContent = "0";
@@ -164,6 +171,19 @@ function renderStatus(status) {
   mEtaEl.textContent = eta;
 }
 
+function renderCompletedState(status) {
+  statusCardEl.classList.add("completed");
+  successBannerEl.classList.remove("hidden");
+  const failed = status.failed ?? 0;
+  const done = status.done ?? 0;
+  const total = status.total ?? 0;
+  if (failed > 0) {
+    successBannerEl.textContent = `Completed ${done}/${total}. ${failed} failed (check logs/results), ready to download.`;
+  } else {
+    successBannerEl.textContent = `All done. ${done}/${total} presentations completed successfully. Ready to download JSON.`;
+  }
+}
+
 function startPolling() {
   if (pollTimer) clearInterval(pollTimer);
   pollTimer = setInterval(async () => {
@@ -180,14 +200,21 @@ function startPolling() {
 
     downloadBtn.disabled = status.done === 0;
     downloadBtn.textContent = isRunning ? "Download Partial" : "Download";
+    if (isRunning) {
+      downloadBtn.classList.remove("btn-success");
+      downloadBtn.classList.add("btn-secondary");
+    }
 
     if (status.done === status.total && status.total > 0) {
       isRunning = false;
       pauseBtn.disabled = true;
       pauseBtn.textContent = "Pause";
       downloadBtn.textContent = "Download JSON";
+      downloadBtn.classList.remove("btn-secondary");
+      downloadBtn.classList.add("btn-success");
       setModeBadge("Completed");
       setStage("completed");
+      renderCompletedState(status);
       clearInterval(pollTimer);
       pollTimer = null;
       log("Done.");
