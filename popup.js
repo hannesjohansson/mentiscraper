@@ -184,6 +184,48 @@ function renderCompletedState(status) {
   }
 }
 
+async function hydrateFromBackground() {
+  let status;
+  try {
+    status = await chrome.runtime.sendMessage({ type: "STATUS" });
+  } catch {
+    return;
+  }
+
+  if (!status || !Number.isFinite(status.total) || status.total <= 0) return;
+
+  renderStatus(status);
+  if (status.done >= status.total) {
+    isRunning = false;
+    isPaused = false;
+    setStage("completed");
+    setModeBadge("Completed");
+    renderCompletedState(status);
+    downloadBtn.disabled = status.done === 0;
+    downloadBtn.textContent = "Download JSON";
+    downloadBtn.classList.remove("btn-secondary");
+    downloadBtn.classList.add("btn-success");
+    pauseBtn.disabled = true;
+    pauseBtn.textContent = "Pause";
+    startBtn.disabled = true;
+    log("Restored completed run state.");
+    return;
+  }
+
+  isRunning = true;
+  isPaused = Boolean(status.paused);
+  setStage("running");
+  downloadBtn.classList.remove("btn-success");
+  downloadBtn.classList.add("btn-secondary");
+  downloadBtn.disabled = status.done === 0;
+  downloadBtn.textContent = "Download Partial";
+  pauseBtn.disabled = false;
+  pauseBtn.textContent = isPaused ? "Resume" : "Pause";
+  startBtn.disabled = true;
+  log("Restored active run state.");
+  startPolling();
+}
+
 function startPolling() {
   if (pollTimer) clearInterval(pollTimer);
   pollTimer = setInterval(async () => {
@@ -282,6 +324,8 @@ startBtn.addEventListener("click", async () => {
   isPaused = false;
   pauseBtn.disabled = false;
   pauseBtn.textContent = "Pause";
+  downloadBtn.classList.remove("btn-success");
+  downloadBtn.classList.add("btn-secondary");
   setStage("running");
   setModeBadge("Running");
   const settings = readRunSettings(true);
@@ -336,6 +380,7 @@ downloadBtn.addEventListener("click", async () => {
 renderIdleState();
 setStage("pre");
 renderSettingsSummary();
+hydrateFromBackground();
 
 [concurrencyInputEl, minDelayInputEl, maxDelayInputEl].forEach((el) => {
   el.addEventListener("input", () => {

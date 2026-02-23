@@ -1,5 +1,6 @@
 const state = {
   queue: [],
+  inFlight: [],
   results: [],
   running: 0,
   concurrency: 3,
@@ -15,11 +16,16 @@ const state = {
     maxDelayMs: 1900
   }
 };
+const PERSIST_KEY = "mentiScrapeStateV1";
+let hydrating = false;
+
+hydrateState();
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg.type === "START") {
     applyRunSettings(msg.settings);
     state.queue = msg.items.slice();
+    state.inFlight = [];
     state.results = new Array(msg.items.length);
     state.running = 0;
     state.done = 0;
@@ -31,6 +37,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     state.nextAllowedAt = Date.now();
 
     pump();
+    persistState();
     sendResponse({ ok: true });
     return true;
   }
@@ -47,6 +54,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       done: state.done,
       total: state.total,
       queued: state.queue.length,
+      inFlight: state.inFlight.length,
       success: state.success,
       failed: state.failed,
       paused: state.paused,
@@ -65,6 +73,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
 
   if (msg.type === "PAUSE") {
     state.paused = true;
+    persistState();
     sendResponse({ ok: true, paused: state.paused });
     return true;
   }
@@ -72,6 +81,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg.type === "RESUME") {
     state.paused = false;
     pump();
+    persistState();
     sendResponse({ ok: true, paused: state.paused });
     return true;
   }
@@ -114,7 +124,9 @@ function pump() {
 
   while (state.running < state.concurrency && state.queue.length) {
     const item = state.queue.shift();
+    state.inFlight.push(item);
     state.running += 1;
+    persistState();
     runOne(item)
       .then((result) => {
         state.results[item.rowIndex] = result;
@@ -132,11 +144,18 @@ function pump() {
         state.failed += 1;
       })
       .finally(() => {
+        removeInFlight(item.rowIndex);
         state.running -= 1;
         state.done += 1;
+        persistState();
         pump();
       });
   }
+}
+
+function removeInFlight(rowIndex) {
+  const idx = state.inFlight.findIndex((x) => x.rowIndex === rowIndex);
+  if (idx !== -1) state.inFlight.splice(idx, 1);
 }
 
 async function runOne(item) {
@@ -179,6 +198,11 @@ async function fetchJsonWithRetry(apiUrl) {
         return await response.json();
       }
 
+      const apiError = await parseApiErrorResponse(response);
+      if (isSeriesNotFoundError(apiError)) {
+        throw new Error("Presentation can't be accessed");
+      }
+
       if (!isRetryableStatus(response.status) || attempt === maxAttempts) {
         throw new Error(`API request failed (${response.status}) for ${apiUrl}`);
       }
@@ -195,6 +219,22 @@ async function fetchJsonWithRetry(apiUrl) {
   }
 
   throw lastError ?? new Error(`Failed to fetch API response for ${apiUrl}`);
+}
+
+async function parseApiErrorResponse(response) {
+  try {
+    return await response.clone().json();
+  } catch {
+    return null;
+  }
+}
+
+function isSeriesNotFoundError(payload) {
+  if (!payload || typeof payload !== "object") return false;
+  const code = String(payload.code || "").toLowerCase();
+  const message = String(payload.message || "").toLowerCase();
+  const status = Number(payload.status);
+  return status === 404 && code === "not_found" && message.includes("series not found");
 }
 
 async function fetchWithTimeout(url, timeoutMs) {
@@ -239,6 +279,73 @@ function randomInt(min, max) {
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function persistState() {
+  if (hydrating) return;
+  const snapshot = {
+    queue: state.queue,
+    inFlight: state.inFlight,
+    results: state.results,
+    running: state.running,
+    concurrency: state.concurrency,
+    done: state.done,
+    total: state.total,
+    success: state.success,
+    failed: state.failed,
+    paused: state.paused,
+    startedAt: state.startedAt,
+    nextAllowedAt: state.nextAllowedAt,
+    throttle: state.throttle
+  };
+  chrome.storage.local.set({ [PERSIST_KEY]: snapshot });
+}
+
+async function hydrateState() {
+  hydrating = true;
+  try {
+    const loaded = await chrome.storage.local.get(PERSIST_KEY);
+    const snapshot = loaded?.[PERSIST_KEY];
+    if (!snapshot) return;
+
+    state.queue = Array.isArray(snapshot.queue) ? snapshot.queue.slice() : [];
+    state.inFlight = Array.isArray(snapshot.inFlight) ? snapshot.inFlight.slice() : [];
+    state.results = Array.isArray(snapshot.results) ? snapshot.results.slice() : [];
+    state.running = 0;
+    state.concurrency = clampInt(
+      Number.isFinite(snapshot.concurrency) ? snapshot.concurrency : state.concurrency,
+      1,
+      8
+    );
+    state.done = Number.isFinite(snapshot.done) ? snapshot.done : 0;
+    state.total = Number.isFinite(snapshot.total) ? snapshot.total : 0;
+    state.success = Number.isFinite(snapshot.success) ? snapshot.success : 0;
+    state.failed = Number.isFinite(snapshot.failed) ? snapshot.failed : 0;
+    state.paused = Boolean(snapshot.paused);
+    state.startedAt = Number.isFinite(snapshot.startedAt) ? snapshot.startedAt : 0;
+    state.nextAllowedAt = Number.isFinite(snapshot.nextAllowedAt) ? snapshot.nextAllowedAt : Date.now();
+
+    const minDelay = clampInt(snapshot?.throttle?.minDelayMs ?? state.throttle.minDelayMs, 300, 120000);
+    const maxDelay = clampInt(snapshot?.throttle?.maxDelayMs ?? state.throttle.maxDelayMs, 300, 120000);
+    state.throttle.minDelayMs = Math.min(minDelay, maxDelay);
+    state.throttle.maxDelayMs = Math.max(minDelay, maxDelay);
+
+    // If worker was suspended mid-request, retry those items first.
+    if (state.inFlight.length > 0) {
+      state.queue = [...state.inFlight, ...state.queue];
+      state.inFlight = [];
+    }
+
+    if (!state.paused && state.done < state.total) {
+      pump();
+    } else {
+      persistState();
+    }
+  } catch {
+    // Keep defaults on hydrate failure.
+  } finally {
+    hydrating = false;
+  }
 }
 
 function extractPresentationId(url) {

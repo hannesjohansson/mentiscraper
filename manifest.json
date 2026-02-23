@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "action": { "default_popup": "popup.html" },
   "background": { "service_worker": "background.js" },
-  "permissions": ["downloads"],
+  "permissions": ["downloads", "storage"],
   "host_permissions": [
     "https://www.mentimeter.com/*",
     "https://mentimeter.com/*",
