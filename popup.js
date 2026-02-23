@@ -28,6 +28,7 @@ const successBannerEl = document.getElementById("successBanner");
 
 let rows = [];
 let pollTimer = null;
+let settingsSyncTimer = null;
 let isPaused = false;
 let isRunning = false;
 let uiStage = "pre";
@@ -123,15 +124,11 @@ function setStage(stage) {
   const showWorkflow = !isPre;
   const showLog = !isPre;
   const showStatus = isRunningStage || isCompleted;
-  const lockSettings = isRunningStage;
 
   workflowSectionEl.classList.toggle("hidden", !showWorkflow);
   logCardEl.classList.toggle("hidden", !showLog);
   statusCardEl.classList.toggle("hidden", !showStatus);
   advancedSettingsEl.open = false;
-  concurrencyInputEl.disabled = lockSettings;
-  minDelayInputEl.disabled = lockSettings;
-  maxDelayInputEl.disabled = lockSettings;
 
   if (isReady) setModeBadge("Ready");
 }
@@ -224,6 +221,22 @@ async function hydrateFromBackground() {
   startBtn.disabled = true;
   log("Restored active run state.");
   startPolling();
+}
+
+function scheduleLiveSettingsSync() {
+  if (!isRunning) return;
+  if (settingsSyncTimer) clearTimeout(settingsSyncTimer);
+
+  settingsSyncTimer = setTimeout(async () => {
+    const settings = readRunSettings(true);
+    renderSettingsSummary();
+    try {
+      await chrome.runtime.sendMessage({ type: "UPDATE_SETTINGS", settings });
+      log(`Updated settings live: ${settings.concurrency} workers, ${settings.minDelayMs}-${settings.maxDelayMs}ms`);
+    } catch (err) {
+      log(`Settings update error: ${String(err)}`);
+    }
+  }, 250);
 }
 
 function startPolling() {
@@ -385,5 +398,10 @@ hydrateFromBackground();
 [concurrencyInputEl, minDelayInputEl, maxDelayInputEl].forEach((el) => {
   el.addEventListener("input", () => {
     renderSettingsSummary();
+    scheduleLiveSettingsSync();
+  });
+  el.addEventListener("change", () => {
+    renderSettingsSummary();
+    scheduleLiveSettingsSync();
   });
 });

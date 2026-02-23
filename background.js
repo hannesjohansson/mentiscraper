@@ -85,6 +85,22 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     sendResponse({ ok: true, paused: state.paused });
     return true;
   }
+
+  if (msg.type === "UPDATE_SETTINGS") {
+    applyRunSettings(msg.settings);
+    persistState();
+    // If concurrency increased, start additional workers immediately.
+    if (!state.paused && state.done < state.total) pump();
+    sendResponse({
+      ok: true,
+      settings: {
+        concurrency: state.concurrency,
+        minDelayMs: state.throttle.minDelayMs,
+        maxDelayMs: state.throttle.maxDelayMs
+      }
+    });
+    return true;
+  }
 });
 
 function applyRunSettings(settings) {
