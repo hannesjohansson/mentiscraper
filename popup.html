@@ -1,0 +1,312 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      :root {
+        color-scheme: light dark;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+        width: 380px;
+        margin: 0;
+        padding: 14px;
+        background: #0d1117;
+        color: #e6edf3;
+      }
+
+      .app {
+        display: grid;
+        gap: 10px;
+      }
+
+      .card {
+        background: #151b23;
+        border: 1px solid #2d333b;
+        border-radius: 10px;
+        padding: 10px;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 16px;
+        line-height: 1.25;
+      }
+
+      .sub {
+        margin-top: 4px;
+        font-size: 12px;
+        color: #9da7b3;
+      }
+
+      label {
+        display: block;
+        font-size: 12px;
+        color: #9da7b3;
+        margin-bottom: 4px;
+      }
+
+      input,
+      select,
+      button {
+        width: 100%;
+        display: block;
+        border-radius: 8px;
+        border: 1px solid #3d444d;
+        background: #0d1117;
+        color: #e6edf3;
+        min-height: 36px;
+        padding: 0 10px;
+      }
+
+      input,
+      select {
+        margin-bottom: 8px;
+      }
+
+      input[type="file"] {
+        padding: 6px 8px;
+        line-height: 1.2;
+      }
+
+      input[type="file"]::file-selector-button {
+        margin-right: 10px;
+        border: 1px solid #3d444d;
+        border-radius: 6px;
+        background: #212830;
+        color: #e6edf3;
+        padding: 6px 10px;
+        cursor: pointer;
+      }
+
+      button {
+        cursor: pointer;
+        font-weight: 600;
+      }
+
+      button:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+      }
+
+      .btn-primary {
+        background: #2f81f7;
+        border-color: #2f81f7;
+        color: #ffffff;
+      }
+
+      .btn-secondary {
+        background: #212830;
+      }
+
+      .controls {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 8px;
+      }
+
+      .advanced {
+        margin-top: 6px;
+        border: 1px solid #2d333b;
+        border-radius: 8px;
+        background: #10161d;
+      }
+
+      .advanced summary {
+        list-style: none;
+        cursor: pointer;
+        padding: 8px 10px;
+        font-size: 12px;
+        color: #9da7b3;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .advanced summary::-webkit-details-marker {
+        display: none;
+      }
+
+      .advanced-summary-title {
+        font-weight: 600;
+        color: #c9d1d9;
+      }
+
+      .advanced-grid {
+        padding: 8px 10px 10px;
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 8px;
+      }
+
+      .advanced-grid label {
+        margin: 0;
+      }
+
+      .hint {
+        font-size: 11px;
+        color: #8b949e;
+        margin-top: 3px;
+      }
+
+      .status-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 8px;
+      }
+
+      .badge {
+        font-size: 11px;
+        border-radius: 999px;
+        border: 1px solid #3d444d;
+        padding: 3px 8px;
+        color: #9da7b3;
+      }
+
+      .badge.running {
+        color: #2f81f7;
+        border-color: #2f81f7;
+      }
+
+      .badge.paused {
+        color: #f7b731;
+        border-color: #f7b731;
+      }
+
+      .badge.idle {
+        color: #9da7b3;
+      }
+
+      .progress-wrap {
+        width: 100%;
+        height: 8px;
+        background: #0d1117;
+        border: 1px solid #3d444d;
+        border-radius: 999px;
+        overflow: hidden;
+      }
+
+      .progress-fill {
+        height: 100%;
+        width: 0%;
+        background: linear-gradient(90deg, #2f81f7, #56d364);
+        transition: width 200ms ease;
+      }
+
+      .metrics {
+        margin-top: 8px;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 6px;
+      }
+
+      .metric {
+        border: 1px solid #2d333b;
+        border-radius: 8px;
+        padding: 6px;
+        background: #0d1117;
+      }
+
+      .metric-k {
+        font-size: 10px;
+        color: #9da7b3;
+      }
+
+      .metric-v {
+        margin-top: 3px;
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      .hidden {
+        display: none;
+      }
+
+      #log {
+        margin: 0;
+        white-space: pre-wrap;
+        font-size: 12px;
+        max-height: 170px;
+        overflow: auto;
+        line-height: 1.4;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="app">
+      <section class="card">
+        <h1>Mentimeter API Scraper</h1>
+        <div class="sub">Upload CSV, scrape safely, export anytime.</div>
+      </section>
+
+      <section class="card">
+        <label for="csvFile">CSV file</label>
+        <input id="csvFile" type="file" accept=".csv,text/csv" />
+
+        <div id="workflowSection" class="hidden">
+          <label for="urlColumn">URL column</label>
+          <select id="urlColumn"></select>
+
+          <div class="controls">
+            <button id="startBtn" class="btn-primary" disabled>Start</button>
+            <button id="pauseBtn" class="btn-secondary" disabled>Pause</button>
+            <button id="downloadBtn" class="btn-secondary" disabled>Download</button>
+          </div>
+
+          <details class="advanced" id="advancedSettings">
+            <summary>
+              <span class="advanced-summary-title">Settings</span>
+              <span id="settingsSummary">2 workers • 900-2200ms</span>
+            </summary>
+            <div class="advanced-grid">
+              <div>
+                <label for="concurrencyInput">Workers</label>
+                <input id="concurrencyInput" type="number" min="1" max="8" step="1" value="2" />
+              </div>
+              <div>
+                <label for="minDelayInput">Min delay (ms)</label>
+                <input id="minDelayInput" type="number" min="300" max="120000" step="100" value="900" />
+              </div>
+              <div>
+                <label for="maxDelayInput">Max delay (ms)</label>
+                <input id="maxDelayInput" type="number" min="300" max="120000" step="100" value="2200" />
+              </div>
+            </div>
+            <div class="hint">Lower delay / higher workers = faster but higher detection risk.</div>
+          </details>
+        </div>
+      </section>
+
+      <section id="statusCard" class="card hidden">
+        <div class="status-row">
+          <strong id="statusTitle">Idle</strong>
+          <span id="modeBadge" class="badge idle">Idle</span>
+        </div>
+        <div class="progress-wrap" aria-label="Progress">
+          <div id="progressFill" class="progress-fill"></div>
+        </div>
+        <div class="metrics">
+          <div class="metric"><div class="metric-k">Done</div><div id="mDone" class="metric-v">0/0</div></div>
+          <div class="metric"><div class="metric-k">Success</div><div id="mSuccess" class="metric-v">0</div></div>
+          <div class="metric"><div class="metric-k">Failed</div><div id="mFailed" class="metric-v">0</div></div>
+          <div class="metric"><div class="metric-k">Queued</div><div id="mQueued" class="metric-v">0</div></div>
+          <div class="metric"><div class="metric-k">Rate</div><div id="mRate" class="metric-v">0.00/m</div></div>
+          <div class="metric"><div class="metric-k">ETA</div><div id="mEta" class="metric-v">n/a</div></div>
+        </div>
+      </section>
+
+      <section id="logCard" class="card hidden">
+        <pre id="log"></pre>
+      </section>
+    </main>
+
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>
