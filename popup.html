@@ -318,20 +318,20 @@
           <details class="advanced" id="advancedSettings">
             <summary>
               <span class="advanced-summary-title">Settings</span>
-              <span id="settingsSummary">2 workers • 900-2200ms</span>
+              <span id="settingsSummary">3 workers • 300-1900ms</span>
             </summary>
             <div class="advanced-grid">
               <div>
                 <label for="concurrencyInput">Workers</label>
-                <input id="concurrencyInput" type="number" min="1" max="8" step="1" value="2" />
+                <input id="concurrencyInput" type="number" min="1" max="8" step="1" value="3" />
               </div>
               <div>
                 <label for="minDelayInput">Min delay (ms)</label>
-                <input id="minDelayInput" type="number" min="300" max="120000" step="100" value="900" />
+                <input id="minDelayInput" type="number" min="300" max="120000" step="100" value="300" />
               </div>
               <div>
                 <label for="maxDelayInput">Max delay (ms)</label>
-                <input id="maxDelayInput" type="number" min="300" max="120000" step="100" value="2200" />
+                <input id="maxDelayInput" type="number" min="300" max="120000" step="100" value="1900" />
               </div>
             </div>
             <div class="hint">Lower delay / higher workers = faster but higher detection risk.</div>

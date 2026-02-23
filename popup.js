@@ -32,9 +32,9 @@ let isPaused = false;
 let isRunning = false;
 let uiStage = "pre";
 const RUN_DEFAULTS = {
-  concurrency: 2,
+  concurrency: 3,
   minDelayMs: 300,
-  maxDelayMs: 1600
+  maxDelayMs: 1900
 };
 
 function log(line) {
