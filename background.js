@@ -136,6 +136,8 @@ function pump() {
         state.results[item.rowIndex] = {
           rowIndex: item.rowIndex,
           url: item.url,
+          source_columns: Object.keys(item.rowData || {}),
+          source_row: { ...(item.rowData || {}) },
           rowData: item.rowData,
           apiUrl: null,
           presentation: null,
@@ -172,6 +174,8 @@ async function runOne(item) {
   return {
     rowIndex: item.rowIndex,
     url: item.url,
+    source_columns: Object.keys(item.rowData || {}),
+    source_row: { ...(item.rowData || {}) },
     rowData: item.rowData,
     apiUrl,
     presentation,
