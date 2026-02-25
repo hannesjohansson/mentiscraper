@@ -72,6 +72,12 @@ function renderIdleState() {
   mEtaEl.textContent = "n/a";
 }
 
+function syncPrimaryActionButtons() {
+  const showPause = isRunning;
+  startBtn.classList.toggle("hidden", showPause);
+  pauseBtn.classList.toggle("hidden", !showPause);
+}
+
 function clampInt(value, min, max) {
   return Math.min(max, Math.max(min, Math.round(value)));
 }
@@ -208,6 +214,7 @@ async function hydrateFromBackground() {
   if (status.done >= status.total) {
     isRunning = false;
     isPaused = false;
+    syncPrimaryActionButtons();
     setStage("completed");
     setModeBadge("Completed");
     renderCompletedState(status);
@@ -224,6 +231,7 @@ async function hydrateFromBackground() {
 
   isRunning = true;
   isPaused = Boolean(status.paused);
+  syncPrimaryActionButtons();
   setStage("running");
   downloadBtn.classList.remove("btn-success");
   downloadBtn.classList.add("btn-secondary");
@@ -285,6 +293,7 @@ function startPolling() {
 
     if (status.done === status.total && status.total > 0) {
       isRunning = false;
+      syncPrimaryActionButtons();
       pauseBtn.disabled = true;
       pauseBtn.textContent = "Pause";
       downloadBtn.textContent = "Download JSON";
@@ -307,6 +316,7 @@ fileInput.addEventListener("change", async () => {
   pauseBtn.textContent = "Pause";
   isPaused = false;
   isRunning = false;
+  syncPrimaryActionButtons();
   setStage("pre");
   renderIdleState();
   if (pollTimer) {
@@ -358,6 +368,7 @@ startBtn.addEventListener("click", async () => {
   downloadBtn.disabled = true;
   isRunning = true;
   isPaused = false;
+  syncPrimaryActionButtons();
   pauseBtn.disabled = false;
   pauseBtn.textContent = "Pause";
   downloadBtn.classList.remove("btn-success");
@@ -418,6 +429,7 @@ downloadBtn.addEventListener("click", async () => {
 renderIdleState();
 setStage("pre");
 renderSettingsSummary();
+syncPrimaryActionButtons();
 hydrateFromBackground();
 
 [concurrencyInputEl, minDelayInputEl, maxDelayInputEl].forEach((el) => {
@@ -456,6 +468,7 @@ if (resetBtn) {
       rows = [];
       isRunning = false;
       isPaused = false;
+      syncPrimaryActionButtons();
       fileInput.value = "";
       logEl.textContent = "";
       startBtn.disabled = true;

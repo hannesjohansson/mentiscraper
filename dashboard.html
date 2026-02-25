@@ -71,7 +71,7 @@
         color: #fff;
         box-shadow: 0 0 0 1px rgba(35, 134, 54, 0.25), 0 0 16px rgba(35, 134, 54, 0.25);
       }
-      .controls { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+      .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
       .advanced { margin-top: 8px; border: 1px solid #2d333b; border-radius: 8px; background: #10161d; }
       .advanced summary {
         list-style: none;
@@ -123,8 +123,24 @@
       .hidden { display: none; }
       #log { margin: 0; white-space: pre-wrap; font-size: 12px; max-height: 320px; overflow: auto; line-height: 1.4; }
       #openDashboardBtn { display: none; }
-      .reset-wrap { display: grid; gap: 6px; }
-      .reset-note { font-size: 11px; color: #8b949e; }
+      .reset-row {
+        display: flex;
+        justify-content: flex-end;
+        padding: 2px 0 0;
+      }
+      .btn-text {
+        width: auto;
+        min-height: auto;
+        padding: 2px 4px;
+        background: transparent;
+        border: none;
+        color: #8b949e;
+        font-weight: 500;
+      }
+      .btn-text:hover {
+        color: #c9d1d9;
+        text-decoration: underline;
+      }
     </style>
   </head>
   <body>
@@ -144,7 +160,7 @@
 
           <div class="controls">
             <button id="startBtn" class="btn-primary" disabled>Start</button>
-            <button id="pauseBtn" class="btn-secondary" disabled>Pause</button>
+            <button id="pauseBtn" class="btn-secondary hidden" disabled>Pause</button>
             <button id="downloadBtn" class="btn-secondary" disabled>Download</button>
           </div>
           <button id="openDashboardBtn" class="btn-secondary" type="button">Open Another Tab</button>
@@ -196,11 +212,8 @@
         <pre id="log"></pre>
       </section>
 
-      <section class="card">
-        <div class="reset-wrap">
-          <button id="resetBtn" class="btn-secondary" type="button">Reset</button>
-          <div class="reset-note">Clears active queue, progress, and saved run state.</div>
-        </div>
+      <section class="reset-row">
+        <button id="resetBtn" class="btn-text" type="button">Reset</button>
       </section>
     </main>
 
