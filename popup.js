@@ -10,6 +10,8 @@ const urlColumnSelect = document.getElementById("urlColumn");
 const startBtn = document.getElementById("startBtn");
 const pauseBtn = document.getElementById("pauseBtn");
 const downloadBtn = document.getElementById("downloadBtn");
+const openDashboardBtn = document.getElementById("openDashboardBtn");
+const resetBtn = document.getElementById("resetBtn");
 const concurrencyInputEl = document.getElementById("concurrencyInput");
 const minDelayInputEl = document.getElementById("minDelayInput");
 const maxDelayInputEl = document.getElementById("maxDelayInput");
@@ -32,10 +34,11 @@ let settingsSyncTimer = null;
 let isPaused = false;
 let isRunning = false;
 let uiStage = "pre";
+const isDashboardView = window.location.pathname.endsWith("/dashboard.html");
 const RUN_DEFAULTS = {
-  concurrency: 3,
-  minDelayMs: 300,
-  maxDelayMs: 1900
+  concurrency: 5,
+  minDelayMs: 150,
+  maxDelayMs: 700
 };
 
 function log(line) {
@@ -86,12 +89,12 @@ function readRunSettings(normalizeInputs = false) {
     ),
     minDelayMs: clampInt(
       Number.isFinite(minRaw) ? minRaw : RUN_DEFAULTS.minDelayMs,
-      300,
+      100,
       120000
     ),
     maxDelayMs: clampInt(
       Number.isFinite(maxRaw) ? maxRaw : RUN_DEFAULTS.maxDelayMs,
-      300,
+      100,
       120000
     )
   };
@@ -113,6 +116,14 @@ function readRunSettings(normalizeInputs = false) {
 function renderSettingsSummary() {
   const s = readRunSettings(false);
   settingsSummaryEl.textContent = `${s.concurrency} workers • ${s.minDelayMs}-${s.maxDelayMs}ms`;
+}
+
+function applySettingsToInputs(settings) {
+  if (!settings) return;
+  if (settings.concurrency != null) concurrencyInputEl.value = String(settings.concurrency);
+  if (settings.minDelayMs != null) minDelayInputEl.value = String(settings.minDelayMs);
+  if (settings.maxDelayMs != null) maxDelayInputEl.value = String(settings.maxDelayMs);
+  renderSettingsSummary();
 }
 
 function setStage(stage) {
@@ -191,6 +202,8 @@ async function hydrateFromBackground() {
 
   if (!status || !Number.isFinite(status.total) || status.total <= 0) return;
 
+  if (status.settings) applySettingsToInputs(status.settings);
+
   renderStatus(status);
   if (status.done >= status.total) {
     isRunning = false;
@@ -231,12 +244,21 @@ function scheduleLiveSettingsSync() {
     const settings = readRunSettings(true);
     renderSettingsSummary();
     try {
-      await chrome.runtime.sendMessage({ type: "UPDATE_SETTINGS", settings });
-      log(`Updated settings live: ${settings.concurrency} workers, ${settings.minDelayMs}-${settings.maxDelayMs}ms`);
+      const res = await chrome.runtime.sendMessage({ type: "UPDATE_SETTINGS", settings });
+      if (res?.settings) applySettingsToInputs(res.settings);
+      const applied = res?.settings || settings;
+      log(
+        `Updated settings live: ${applied.concurrency} workers, ${applied.minDelayMs}-${applied.maxDelayMs}ms`
+      );
     } catch (err) {
       log(`Settings update error: ${String(err)}`);
     }
   }, 250);
+}
+
+function openDashboardTab() {
+  const url = chrome.runtime.getURL("dashboard.html");
+  window.open(url, "_blank", "noopener");
 }
 
 function startPolling() {
@@ -250,10 +272,11 @@ function startPolling() {
       log(`Status error: ${String(err)}`);
       return;
     }
+    if (status?.settings) applySettingsToInputs(status.settings);
     renderStatus(status);
     statusCardEl.classList.remove("hidden");
 
-    downloadBtn.disabled = status.done === 0;
+    downloadBtn.disabled = (status.success ?? 0) + (status.failed ?? 0) === 0;
     downloadBtn.textContent = isRunning ? "Download Partial" : "Download";
     if (isRunning) {
       downloadBtn.classList.remove("btn-success");
@@ -347,6 +370,8 @@ startBtn.addEventListener("click", async () => {
   log(`Queued rows: ${items.length}`);
   log(`Settings: ${settings.concurrency} workers, ${settings.minDelayMs}-${settings.maxDelayMs}ms delay`);
 
+  if (!isDashboardView) openDashboardTab();
+
   await chrome.runtime.sendMessage({ type: "START", items, settings });
   log("Started with throttling enabled. API requests use browser session cookies.");
   startPolling();
@@ -405,3 +430,44 @@ hydrateFromBackground();
     scheduleLiveSettingsSync();
   });
 });
+
+if (openDashboardBtn) {
+  if (isDashboardView) {
+    openDashboardBtn.classList.add("hidden");
+  } else {
+    openDashboardBtn.addEventListener("click", () => {
+      openDashboardTab();
+    });
+  }
+}
+
+if (resetBtn) {
+  resetBtn.addEventListener("click", async () => {
+    try {
+      await chrome.runtime.sendMessage({ type: "RESET" });
+      if (pollTimer) {
+        clearInterval(pollTimer);
+        pollTimer = null;
+      }
+      if (settingsSyncTimer) {
+        clearTimeout(settingsSyncTimer);
+        settingsSyncTimer = null;
+      }
+      rows = [];
+      isRunning = false;
+      isPaused = false;
+      fileInput.value = "";
+      logEl.textContent = "";
+      startBtn.disabled = true;
+      pauseBtn.disabled = true;
+      downloadBtn.disabled = true;
+      downloadBtn.textContent = "Download";
+      pauseBtn.textContent = "Pause";
+      renderIdleState();
+      setStage("pre");
+      log("State reset.");
+    } catch (err) {
+      log(`Reset error: ${String(err)}`);
+    }
+  });
+}

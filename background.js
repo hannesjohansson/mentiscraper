@@ -2,8 +2,9 @@ const state = {
   queue: [],
   inFlight: [],
   results: [],
+  runId: 0,
   running: 0,
-  concurrency: 3,
+  concurrency: 5,
   done: 0,
   total: 0,
   success: 0,
@@ -12,14 +13,18 @@ const state = {
   startedAt: 0,
   nextAllowedAt: 0,
   throttle: {
-    minDelayMs: 300,
-    maxDelayMs: 1900
+    minDelayMs: 150,
+    maxDelayMs: 700
   }
 };
 const PERSIST_KEY = "mentiScrapeStateV1";
 let hydrating = false;
 
-hydrateState();
+const hydratePromise = hydrateState();
+
+chrome.action.onClicked.addListener(() => {
+  openDashboardTab();
+});
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg.type === "START") {
@@ -27,6 +32,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     state.queue = msg.items.slice();
     state.inFlight = [];
     state.results = new Array(msg.items.length);
+    state.runId += 1;
     state.running = 0;
     state.done = 0;
     state.total = msg.items.length;
@@ -43,32 +49,43 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   }
 
   if (msg.type === "STATUS") {
-    const elapsedMs = state.startedAt ? Date.now() - state.startedAt : 0;
-    const progress = state.total ? state.done / state.total : 0;
-    const ratePerMinute = elapsedMs > 0 ? (state.done * 60000) / elapsedMs : 0;
-    const remaining = Math.max(0, state.total - state.done);
-    const etaMs = ratePerMinute > 0 ? (remaining / ratePerMinute) * 60000 : null;
+    (async () => {
+      await hydratePromise;
+      const elapsedMs = state.startedAt ? Date.now() - state.startedAt : 0;
+      const progress = state.total ? state.done / state.total : 0;
+      const ratePerMinute = elapsedMs > 0 ? (state.done * 60000) / elapsedMs : 0;
+      const remaining = Math.max(0, state.total - state.done);
+      const etaMs = ratePerMinute > 0 ? (remaining / ratePerMinute) * 60000 : null;
 
-    sendResponse({
-      running: state.running,
-      done: state.done,
-      total: state.total,
-      queued: state.queue.length,
-      inFlight: state.inFlight.length,
-      success: state.success,
-      failed: state.failed,
-      paused: state.paused,
-      progress,
-      elapsedMs,
-      ratePerMinute,
-      etaMs
-    });
-    return true;
+      sendResponse({
+        running: state.running,
+        done: state.done,
+        total: state.total,
+        queued: state.queue.length,
+        inFlight: state.inFlight.length,
+        success: state.success,
+        failed: state.failed,
+        paused: state.paused,
+        progress,
+        elapsedMs,
+        ratePerMinute,
+        etaMs,
+        settings: {
+          concurrency: state.concurrency,
+          minDelayMs: state.throttle.minDelayMs,
+          maxDelayMs: state.throttle.maxDelayMs
+        }
+      });
+    })();
+    return true; // async sendResponse
   }
 
   if (msg.type === "GET_RESULTS") {
-    sendResponse({ results: state.results });
-    return true;
+    (async () => {
+      await hydratePromise;
+      sendResponse({ results: state.results });
+    })();
+    return true; // async sendResponse
   }
 
   if (msg.type === "PAUSE") {
@@ -88,6 +105,8 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
 
   if (msg.type === "UPDATE_SETTINGS") {
     applyRunSettings(msg.settings);
+    // Make new settings take effect immediately.
+    state.nextAllowedAt = Date.now();
     persistState();
     // If concurrency increased, start additional workers immediately.
     if (!state.paused && state.done < state.total) pump();
@@ -101,7 +120,33 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     });
     return true;
   }
+
+  if (msg.type === "RESET") {
+    resetRunState();
+    persistState();
+    sendResponse({ ok: true });
+    return true;
+  }
 });
+
+function openDashboardTab() {
+  chrome.tabs.create({ url: chrome.runtime.getURL("dashboard.html") });
+}
+
+function resetRunState() {
+  state.runId += 1;
+  state.queue = [];
+  state.inFlight = [];
+  state.results = [];
+  state.running = 0;
+  state.done = 0;
+  state.total = 0;
+  state.success = 0;
+  state.failed = 0;
+  state.paused = false;
+  state.startedAt = 0;
+  state.nextAllowedAt = Date.now();
+}
 
 function applyRunSettings(settings) {
   const rawConcurrency = Number(settings?.concurrency);
@@ -111,12 +156,12 @@ function applyRunSettings(settings) {
   const concurrency = clampInt(Number.isFinite(rawConcurrency) ? rawConcurrency : state.concurrency, 1, 8);
   let minDelayMs = clampInt(
     Number.isFinite(rawMinDelay) ? rawMinDelay : state.throttle.minDelayMs,
-    300,
+    100,
     120000
   );
   let maxDelayMs = clampInt(
     Number.isFinite(rawMaxDelay) ? rawMaxDelay : state.throttle.maxDelayMs,
-    300,
+    100,
     120000
   );
 
@@ -140,15 +185,18 @@ function pump() {
 
   while (state.running < state.concurrency && state.queue.length) {
     const item = state.queue.shift();
+    const runIdForTask = state.runId;
     state.inFlight.push(item);
     state.running += 1;
     persistState();
     runOne(item)
       .then((result) => {
+        if (runIdForTask !== state.runId) return;
         state.results[item.rowIndex] = result;
         state.success += 1;
       })
       .catch((e) => {
+        if (runIdForTask !== state.runId) return;
         state.results[item.rowIndex] = {
           rowIndex: item.rowIndex,
           url: item.url,
@@ -162,6 +210,7 @@ function pump() {
         state.failed += 1;
       })
       .finally(() => {
+        if (runIdForTask !== state.runId) return;
         removeInFlight(item.rowIndex);
         state.running -= 1;
         state.done += 1;
@@ -200,10 +249,13 @@ async function runOne(item) {
 }
 
 async function waitForThrottleSlot() {
-  const now = Date.now();
-  const waitMs = Math.max(0, state.nextAllowedAt - now);
+  // Deterministic scheduling: each request "reserves" its start time.
+  // This avoids races between concurrent workers and makes live settings updates effective.
+  const delay = randomInt(state.throttle.minDelayMs, state.throttle.maxDelayMs);
+  const startAt = Math.max(Date.now(), state.nextAllowedAt);
+  state.nextAllowedAt = startAt + delay;
+  const waitMs = startAt - Date.now();
   if (waitMs > 0) await sleep(waitMs);
-  state.nextAllowedAt = Date.now() + randomInt(state.throttle.minDelayMs, state.throttle.maxDelayMs);
 }
 
 async function fetchJsonWithRetry(apiUrl) {
@@ -307,6 +359,7 @@ function persistState() {
     queue: state.queue,
     inFlight: state.inFlight,
     results: state.results,
+    runId: state.runId,
     running: state.running,
     concurrency: state.concurrency,
     done: state.done,
@@ -331,6 +384,7 @@ async function hydrateState() {
     state.queue = Array.isArray(snapshot.queue) ? snapshot.queue.slice() : [];
     state.inFlight = Array.isArray(snapshot.inFlight) ? snapshot.inFlight.slice() : [];
     state.results = Array.isArray(snapshot.results) ? snapshot.results.slice() : [];
+    state.runId = Number.isFinite(snapshot.runId) ? snapshot.runId : 0;
     state.running = 0;
     state.concurrency = clampInt(
       Number.isFinite(snapshot.concurrency) ? snapshot.concurrency : state.concurrency,
@@ -345,8 +399,8 @@ async function hydrateState() {
     state.startedAt = Number.isFinite(snapshot.startedAt) ? snapshot.startedAt : 0;
     state.nextAllowedAt = Number.isFinite(snapshot.nextAllowedAt) ? snapshot.nextAllowedAt : Date.now();
 
-    const minDelay = clampInt(snapshot?.throttle?.minDelayMs ?? state.throttle.minDelayMs, 300, 120000);
-    const maxDelay = clampInt(snapshot?.throttle?.maxDelayMs ?? state.throttle.maxDelayMs, 300, 120000);
+    const minDelay = clampInt(snapshot?.throttle?.minDelayMs ?? state.throttle.minDelayMs, 100, 120000);
+    const maxDelay = clampInt(snapshot?.throttle?.maxDelayMs ?? state.throttle.maxDelayMs, 100, 120000);
     state.throttle.minDelayMs = Math.min(minDelay, maxDelay);
     state.throttle.maxDelayMs = Math.max(minDelay, maxDelay);
 

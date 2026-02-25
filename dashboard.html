@@ -3,58 +3,35 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Mentimeter Scraper Dashboard</title>
     <style>
       :root {
         color-scheme: light dark;
       }
-
-      * {
-        box-sizing: border-box;
-      }
-
+      * { box-sizing: border-box; }
       body {
         font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-        width: 380px;
         margin: 0;
-        padding: 14px;
+        padding: 18px;
         background: #0d1117;
         color: #e6edf3;
       }
-
       .app {
         display: grid;
-        gap: 10px;
+        gap: 12px;
+        max-width: 980px;
+        margin: 0 auto;
       }
-
       .card {
         background: #151b23;
         border: 1px solid #2d333b;
         border-radius: 10px;
-        padding: 10px;
+        padding: 12px;
       }
-
-      h1 {
-        margin: 0;
-        font-size: 16px;
-        line-height: 1.25;
-      }
-
-      .sub {
-        margin-top: 4px;
-        font-size: 12px;
-        color: #9da7b3;
-      }
-
-      label {
-        display: block;
-        font-size: 12px;
-        color: #9da7b3;
-        margin-bottom: 4px;
-      }
-
-      input,
-      select,
-      button {
+      h1 { margin: 0; font-size: 20px; }
+      .sub { margin-top: 6px; font-size: 13px; color: #9da7b3; }
+      label { display: block; font-size: 12px; color: #9da7b3; margin-bottom: 4px; }
+      input, select, button {
         width: 100%;
         display: block;
         border-radius: 8px;
@@ -64,7 +41,6 @@
         min-height: 36px;
         padding: 0 10px;
       }
-
       select {
         padding-right: 34px;
         appearance: none;
@@ -74,17 +50,8 @@
         background-repeat: no-repeat;
         background-position: right 12px center;
       }
-
-      input,
-      select {
-        margin-bottom: 8px;
-      }
-
-      input[type="file"] {
-        padding: 6px 8px;
-        line-height: 1.2;
-      }
-
+      input, select { margin-bottom: 8px; }
+      input[type="file"] { padding: 6px 8px; line-height: 1.2; }
       input[type="file"]::file-selector-button {
         margin-right: 10px;
         border: 1px solid #3d444d;
@@ -94,51 +61,18 @@
         padding: 6px 10px;
         cursor: pointer;
       }
-
-      button {
-        cursor: pointer;
-        font-weight: 600;
-      }
-
-      button:disabled {
-        opacity: 0.55;
-        cursor: not-allowed;
-      }
-
-      .btn-primary {
-        background: #2f81f7;
-        border-color: #2f81f7;
-        color: #ffffff;
-      }
-
-      .btn-secondary {
-        background: #212830;
-      }
-
+      button { cursor: pointer; font-weight: 600; }
+      button:disabled { opacity: 0.55; cursor: not-allowed; }
+      .btn-primary { background: #2f81f7; border-color: #2f81f7; color: #fff; }
+      .btn-secondary { background: #212830; }
       .btn-success {
         background: #238636;
         border-color: #238636;
-        color: #ffffff;
+        color: #fff;
         box-shadow: 0 0 0 1px rgba(35, 134, 54, 0.25), 0 0 16px rgba(35, 134, 54, 0.25);
       }
-
-      .controls {
-        display: grid;
-        grid-template-columns: 1fr 1fr 1fr;
-        gap: 8px;
-      }
-
-      .secondary-action {
-        margin-top: 8px;
-      }
-
-      .advanced {
-        margin-top: 6px;
-        border: 1px solid #2d333b;
-        border-radius: 8px;
-        background: #10161d;
-      }
-
+      .controls { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+      .advanced { margin-top: 8px; border: 1px solid #2d333b; border-radius: 8px; background: #10161d; }
       .advanced summary {
         list-style: none;
         cursor: pointer;
@@ -149,39 +83,12 @@
         justify-content: space-between;
         align-items: center;
       }
-
-      .advanced summary::-webkit-details-marker {
-        display: none;
-      }
-
-      .advanced summary::after {
-        content: "▾";
-        color: #9da7b3;
-        font-size: 12px;
-        margin-left: 10px;
-        transition: transform 150ms ease;
-      }
-
-      .advanced[open] summary::after {
-        transform: rotate(180deg);
-      }
-
-      .advanced-summary-title {
-        font-weight: 600;
-        color: #c9d1d9;
-      }
-
-      .advanced-grid {
-        padding: 8px 10px 10px;
-        display: grid;
-        grid-template-columns: 1fr 1fr 1fr;
-        gap: 8px;
-      }
-
-      .advanced-grid label {
-        margin: 0;
-      }
-
+      .advanced summary::-webkit-details-marker { display: none; }
+      .advanced summary::after { content: "▾"; color: #9da7b3; font-size: 12px; margin-left: 10px; transition: transform 150ms ease; }
+      .advanced[open] summary::after { transform: rotate(180deg); }
+      .advanced-summary-title { font-weight: 600; color: #c9d1d9; }
+      .advanced-grid { padding: 8px 10px 10px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+      .advanced-grid label { margin: 0; }
       .hint {
         font-size: 11px;
         color: #8b949e;
@@ -191,63 +98,19 @@
         border-radius: 6px;
         background: #0d1117;
       }
-
-      .status-row {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: 8px;
-      }
-
-      .badge {
-        font-size: 11px;
-        border-radius: 999px;
-        border: 1px solid #3d444d;
-        padding: 3px 8px;
-        color: #9da7b3;
-      }
-
-      .badge.running {
-        color: #2f81f7;
-        border-color: #2f81f7;
-      }
-
-      .badge.paused {
-        color: #f7b731;
-        border-color: #f7b731;
-      }
-
-      .badge.idle {
-        color: #9da7b3;
-      }
-
-      .badge.completed {
-        color: #56d364;
-        border-color: #56d364;
-        background: rgba(86, 211, 100, 0.12);
-      }
-
-      .progress-wrap {
-        width: 100%;
-        height: 8px;
-        background: #0d1117;
-        border: 1px solid #3d444d;
-        border-radius: 999px;
-        overflow: hidden;
-      }
-
-      .progress-fill {
-        height: 100%;
-        width: 0%;
-        background: linear-gradient(90deg, #2f81f7, #56d364);
-        transition: width 200ms ease;
-      }
-
-      #statusCard.completed {
-        border-color: #2f6b3f;
-        background: linear-gradient(180deg, #132219 0%, #151b23 100%);
-      }
-
+      .status-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+      .badge { font-size: 11px; border-radius: 999px; border: 1px solid #3d444d; padding: 3px 8px; color: #9da7b3; }
+      .badge.running { color: #2f81f7; border-color: #2f81f7; }
+      .badge.paused { color: #f7b731; border-color: #f7b731; }
+      .badge.idle { color: #9da7b3; }
+      .badge.completed { color: #56d364; border-color: #56d364; background: rgba(86, 211, 100, 0.12); }
+      .progress-wrap { width: 100%; height: 10px; background: #0d1117; border: 1px solid #3d444d; border-radius: 999px; overflow: hidden; }
+      .progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #2f81f7, #56d364); transition: width 200ms ease; }
+      #statusCard.completed { border-color: #2f6b3f; background: linear-gradient(180deg, #132219 0%, #151b23 100%); }
+      .metrics { margin-top: 8px; display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+      .metric { border: 1px solid #2d333b; border-radius: 8px; padding: 8px; background: #0d1117; }
+      .metric-k { font-size: 10px; color: #9da7b3; }
+      .metric-v { margin-top: 3px; font-size: 13px; font-weight: 700; }
       .success-banner {
         margin-top: 8px;
         padding: 8px 10px;
@@ -256,53 +119,19 @@
         background: rgba(86, 211, 100, 0.12);
         color: #9be9a8;
         font-size: 12px;
-        line-height: 1.4;
       }
-
-      .metrics {
-        margin-top: 8px;
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 6px;
-      }
-
-      .metric {
-        border: 1px solid #2d333b;
-        border-radius: 8px;
-        padding: 6px;
-        background: #0d1117;
-      }
-
-      .metric-k {
-        font-size: 10px;
-        color: #9da7b3;
-      }
-
-      .metric-v {
-        margin-top: 3px;
-        font-size: 13px;
-        font-weight: 700;
-      }
-
-      .hidden {
-        display: none;
-      }
-
-      #log {
-        margin: 0;
-        white-space: pre-wrap;
-        font-size: 12px;
-        max-height: 170px;
-        overflow: auto;
-        line-height: 1.4;
-      }
+      .hidden { display: none; }
+      #log { margin: 0; white-space: pre-wrap; font-size: 12px; max-height: 320px; overflow: auto; line-height: 1.4; }
+      #openDashboardBtn { display: none; }
+      .reset-wrap { display: grid; gap: 6px; }
+      .reset-note { font-size: 11px; color: #8b949e; }
     </style>
   </head>
   <body>
     <main class="app">
       <section class="card">
         <h1>Mentimeter API Scraper</h1>
-        <div class="sub">Upload CSV, scrape safely, export anytime.</div>
+        <div class="sub">Keep this tab open while running.</div>
       </section>
 
       <section class="card">
@@ -318,9 +147,7 @@
             <button id="pauseBtn" class="btn-secondary" disabled>Pause</button>
             <button id="downloadBtn" class="btn-secondary" disabled>Download</button>
           </div>
-          <button id="openDashboardBtn" class="btn-secondary secondary-action" type="button">
-            Open Another Tab
-          </button>
+          <button id="openDashboardBtn" class="btn-secondary" type="button">Open Another Tab</button>
 
           <details class="advanced" id="advancedSettings">
             <summary>
@@ -367,6 +194,13 @@
 
       <section id="logCard" class="card hidden">
         <pre id="log"></pre>
+      </section>
+
+      <section class="card">
+        <div class="reset-wrap">
+          <button id="resetBtn" class="btn-secondary" type="button">Reset</button>
+          <div class="reset-note">Clears active queue, progress, and saved run state.</div>
+        </div>
       </section>
     </main>
 
